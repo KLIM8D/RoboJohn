@@ -1,24 +1,53 @@
 #!/usr/bin/env python3
-from random import randint
+import random
+import sys
+import time
+import json
 
 
 class KVItem:
-    count = 0
-    value = None
-
     def __init__(self, count, value):
         self.count = count
         self.value = value
 
 
-class RoboJohn:
+class Word:
+    def __init__(self, term, plural, sentences):
+        self.term = term
+        self.plural = plural
+        self.sentences = sentences
+
+
+class Dictionary:
     words = {}
 
     def __init__(self, filepath):
-        with open(filepath, 'r') as f:
-            for line in f:
+        i = 0
+        try:
+            with open(filepath, 'r') as f:
+                data = json.load(f)
+
+                for r in data["result"]:
+                    word = r["word"]
+                    term = r["term"]
+                    plural = r["glo"]
+                    sentences = r["sentences"]
+
+                    self.words[word] = (Word(term, plural, sentences))
+        except Exception as e:
+            print(e)
+            print("line:", i)
+            sys.exit()
+
+
+class RoboJohn:
+    chain = {}
+
+    def read_dictionary(self, dicionary):
+        for k, v in dicionary.items():
+            for sentence in v.sentences:
                 item = []
-                for word in line.split():
+                for word in sentence.split():
                     if len(item) < 3:
                         item.append(word)
                     else:
@@ -26,67 +55,106 @@ class RoboJohn:
                         self.add_word(key, item[2])
                         del item[0]
 
+    def read_file(self, filepath):
+        i = 0
+        try:
+            with open(filepath, 'r') as f:
+                for line in f:
+                    i += 1
+                    item = []
+                    for word in line.split():
+                        if len(item) < 3:
+                            item.append(word)
+                        else:
+                            key = (item[0], item[1])
+                            self.add_word(key, item[2])
+                            del item[0]
+        except Exception as e:
+            print(e)
+            print("line:", i)
+            sys.exit()
+
     def add_word(self, key, value):
-        if key not in self.words:
-            self.words[key] = {KVItem(1, value)}
+        if key not in self.chain:
+            self.chain[key] = {KVItem(1, value)}
         else:
-            followers = [x for x in self.words[key] if x.value == value]
+            followers = [x for x in self.chain[key] if x.value == value]
             if len(followers) > 0:
                 for i, v in enumerate(followers):
                     v.count += 1
             else:
-                self.words[key] = self.words[key] | {KVItem(1, value)}
+                self.chain[key] = self.chain[key] | {KVItem(1, value)}
 
     def list(self):
-        for k, v in self.words.items():
+        for k, v in self.chain.items():
             print("{key} {value} #{count}".format(key=k,
                   value=[x.value for x in v], count=[c.count for c in v]))
 
     def sentence(self, word, length):
         s = []
-        o = [x for x in self.words if x[0] == word]
+        o = [x for x in self.chain if x[0] == word]
         if len(o) > 0:
-            rnd = randint(0, len(o)-1)
+            rnd = random.randint(0, len(o)-1)
             key = o[rnd]
-            v = sorted(self.words[key], key=lambda x: x.count, reverse=True)
+            v = sorted(self.chain[key], key=lambda x: x.count, reverse=True)
             s.append(key[0])
             s.append(key[1])
             s.append(v[0].value)
 
             o = (key[1], v[0].value)
             while len(s) < length:
-                if o in self.words:
-                    obj = sorted(self.words[o],
-                                 key=lambda x: x.count, reverse=True)
-                    s.append(obj[0].value)
+                if o in self.chain:
+                    #obj = sorted(self.chain[o],
+                    #             key=lambda x: x.count, reverse=True)
+                    w = []
+                    for x in self.chain[o]:
+                        for i in range(x.count):
+                            w.append(x)
+
+                    random.shuffle(w)
+
+                    i = random.randint(0, len(w)-1)
+                    obj = w[i]
+                    s.append(obj.value)
+                    o = (o[1], obj.value)
                 else:
                     s.append(".")
-                    keys = [x for x in self.words.keys()]
-                    i = randint(0, len(keys)-1)
-                    l = self.words[keys[i]]
+                    keys = [x for x in self.chain.keys()]
+                    i = random.randint(0, len(keys)-1)
+                    l = self.chain[keys[i]]
                     obj = sorted(l, key=lambda x: x.count, reverse=True)
                     s.append(keys[i][0])
                     s.append(keys[i][1])
                     s.append(obj[0].value)
 
-                o = (o[1], obj[0].value)
+                    o = (o[1], obj[0].value)
 
             print(" ".join(s))
 
 
-o = RoboJohn("test.txt")
-o.add_word(("John", "hader"), "sne")
-o.add_word(("John", "hader"), "sne")
-o.add_word(("John", "hader"), "sne")
-o.add_word(("John", "hader"), "sne")
-o.add_word(("John", "hader"), "is")
-o.add_word(("John", "hader"), "regn")
-o.add_word(("John", "hader"), "regn")
-o.add_word(("hader", "sne"), "helt")
-o.add_word(("sne", "helt"), "ekstremt")
-o.add_word(("sne", "helt"), "vildt")
-o.add_word(("sne", "helt"), "vildt")
-o.add_word(("sne", "helt"), "meget")
+def main():
+    #d = Dictionary("dict.json")
+    o = RoboJohn()
+    #o.read_dictionary(d.words)
+    o.read_file("data.txt")
+    '''o.add_word(("John", "hader"), "sne")
+    o.add_word(("John", "hader"), "sne")
+    o.add_word(("John", "hader"), "sne")
+    o.add_word(("John", "hader"), "sne")
+    o.add_word(("John", "hader"), "is")
+    o.add_word(("John", "hader"), "regn")
+    o.add_word(("John", "hader"), "regn")
+    o.add_word(("hader", "sne"), "helt")
+    o.add_word(("sne", "helt"), "ekstremt")
+    o.add_word(("sne", "helt"), "vildt")
+    o.add_word(("sne", "helt"), "vildt")
+    o.add_word(("sne", "helt"), "meget")'''
 
-o.list()
-o.sentence("John", 20)
+    o.list()
+    for i in range(100):
+        o.sentence("John", 20)
+        time.sleep(5)
+
+
+if __name__ == "__main__":
+    main()

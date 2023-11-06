@@ -10,6 +10,9 @@ class KVItem:
         self.count = count
         self.value = value
 
+    def __str__(self):
+        return "count: %s - value: %s" % (self.count, self.value)
+
 
 class Word:
     def __init__(self, term, plural, sentences):
@@ -27,13 +30,12 @@ class Dictionary:
             with open(filepath, 'r') as f:
                 data = json.load(f)
 
-                for r in data["result"]:
-                    word = r["word"]
-                    term = r["term"]
-                    plural = r["glo"]
-                    sentences = r["sentences"]
+                for key, value in dict.items(data):
+                    term = value["x"]
+                    plural = value["y"]
+                    sentences = value["z"]
 
-                    self.words[word] = (Word(term, plural, sentences))
+                    self.words[key] = (Word(term, plural, sentences))
         except Exception as e:
             print(e)
             print("line:", i)
@@ -79,7 +81,7 @@ class RoboJohn:
             self.chain[key] = {KVItem(1, value)}
         else:
             followers = [x for x in self.chain[key] if x.value == value]
-            if len(followers) > 0:
+            if followers:
                 for i, v in enumerate(followers):
                     v.count += 1
             else:
@@ -93,7 +95,12 @@ class RoboJohn:
     def sentence(self, word, length):
         s = []
         o = [x for x in self.chain if x[0] == word]
-        if len(o) > 0:
+
+        if not o:
+            key = random.choice(list(self.chain.keys()))
+            o = [x for x in self.chain if x[0] == key[0]]
+
+        if o:
             rnd = random.randint(0, len(o)-1)
             key = o[rnd]
             v = sorted(self.chain[key], key=lambda x: x.count, reverse=True)
@@ -129,7 +136,7 @@ class RoboJohn:
 
                     o = (o[1], obj[0].value)
 
-            print(" ".join(s))
+            return (" ".join(s))
 
 
 def main():
@@ -137,22 +144,10 @@ def main():
     o = RoboJohn()
     #o.read_dictionary(d.words)
     o.read_file("data.txt")
-    '''o.add_word(("John", "hader"), "sne")
-    o.add_word(("John", "hader"), "sne")
-    o.add_word(("John", "hader"), "sne")
-    o.add_word(("John", "hader"), "sne")
-    o.add_word(("John", "hader"), "is")
-    o.add_word(("John", "hader"), "regn")
-    o.add_word(("John", "hader"), "regn")
-    o.add_word(("hader", "sne"), "helt")
-    o.add_word(("sne", "helt"), "ekstremt")
-    o.add_word(("sne", "helt"), "vildt")
-    o.add_word(("sne", "helt"), "vildt")
-    o.add_word(("sne", "helt"), "meget")'''
 
     o.list()
     for i in range(100):
-        o.sentence("John", 20)
+        sentence = o.sentence("I", 2)
         time.sleep(5)
 
 
